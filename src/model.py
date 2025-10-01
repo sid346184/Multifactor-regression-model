@@ -5,25 +5,18 @@ from sklearn.linear_model import Ridge, Lasso
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
-# -----------------------------
-# Load aligned data
-# -----------------------------
 data = pd.read_csv("data/aligned_data.csv", parse_dates=['Date'], index_col='Date')
 
 X = data.drop(columns=['Returns'])
 y = data['Returns']
 
-# -----------------------------
-# OLS Regression (existing)
-# -----------------------------
+
 X_sm = sm.add_constant(X)
 ols_model = sm.OLS(y, X_sm).fit()
 print("----- OLS Summary -----")
 print(ols_model.summary())
 
-# -----------------------------
-# Ridge & Lasso (new)
-# -----------------------------
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 ridge_model = Ridge(alpha=0.01).fit(X_train, y_train)
@@ -36,9 +29,7 @@ lasso_r2 = r2_score(y_test, lasso_model.predict(X_test))
 print(f"\nRidge R^2 on test set: {ridge_r2:.4f}")
 print(f"Lasso R^2 on test set: {lasso_r2:.4f}")
 
-# -----------------------------
-# Factor contributions (using OLS for interpretability)
-# -----------------------------
+
 coefficients = ols_model.params
 coefficients.to_csv("outputs/regression_coefficients.csv")
 
@@ -46,13 +37,10 @@ contributions = X_sm.multiply(coefficients, axis=1)
 contributions['Predicted_Return'] = contributions.sum(axis=1)
 contributions.reset_index(inplace=True)  # include Date
 
-# Save JSON
 contributions.to_json("outputs/factor_contributions.json", orient='records', date_format='iso')
 print("Factor contributions saved to outputs/factor_contributions.json")
 
-# -----------------------------
-# Human-readable summary
-# -----------------------------
+
 factor_interpretation = {
     "VIX": "Higher market volatility negatively impacts index returns.",
     "Gold": "Rising gold prices may indicate investor hedging or risk-off behavior, positively affecting returns.",
@@ -79,11 +67,9 @@ for factor in top_factors:
 total_explained = contributions[factors].sum(axis=1).mean()
 summary_lines.append(f"\nOverall, the model explains an average of {total_explained:.5f} of daily index returns.")
 
-# Add Ridge/Lasso test R^2 info
 summary_lines.append(f"\nRidge R^2 on test set: {ridge_r2:.4f}")
 summary_lines.append(f"Lasso R^2 on test set: {lasso_r2:.4f}")
 
-# Save summary
 with open("outputs/summary_report.txt", "w") as f:
     f.write("\n".join(summary_lines))
 
