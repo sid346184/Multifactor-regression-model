@@ -69,10 +69,13 @@ multifactor-regression-model/
 ```bash
 git clone https://github.com/yourusername/multifactor-regression-model.git
 cd multifactor-regression-model
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate   # Linux/Mac
 venv\Scripts\activate      # Windows
 
+python src/download_data.py
+python src/preprocess.py
+python src/model.py
 python src/visualise.py
 
 ```
