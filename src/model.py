@@ -1,66 +1,92 @@
 import pandas as pd
 import statsmodels.api as sm
 import numpy as np
+import os
 
+# -----------------------------
+# CONFIG
+# -----------------------------
+DATA_PATH = "data/aligned_data.csv"
+OUTPUT_JSON = "outputs/factor_contributions.json"
+OUTPUT_COEFF = "outputs/regression_coefficients.csv"
+OUTPUT_SUMMARY = "outputs/summary_report.txt"
+
+# -----------------------------
 # Load aligned data
-data = pd.read_csv("data/aligned_data.csv", parse_dates=['Date'], index_col='Date')
+# -----------------------------
+data = pd.read_csv(DATA_PATH, parse_dates=['Date'], index_col='Date')
 
+# -----------------------------
 # Regression setup
+# -----------------------------
 X = data.drop(columns=['Returns'])
 y = data['Returns']
 X = sm.add_constant(X)
 
-# Fit model
+# Fit OLS model
 model = sm.OLS(y, X).fit()
 print(model.summary())
 
+# -----------------------------
 # Save regression coefficients
+# -----------------------------
 coefficients = model.params
-coefficients.to_csv("outputs/regression_coefficients.csv")
+coefficients.to_csv(OUTPUT_COEFF)
 
+# -----------------------------
 # Compute contributions per day
+# -----------------------------
 contributions = X.multiply(coefficients, axis=1)
 contributions['Predicted_Return'] = contributions.sum(axis=1)
 
-# Reset index so 'Date' is a column
+# Reset index to include Date column
 contributions.reset_index(inplace=True)
 
 # Save machine-readable JSON
-contributions.to_json("outputs/factor_contributions.json", orient='records', date_format='iso')
-print("Factor contributions saved to outputs/factor_contributions.json")
+os.makedirs("outputs", exist_ok=True)
+contributions.to_json(OUTPUT_JSON, orient='records', date_format='iso')
+print(f"Factor contributions saved to {OUTPUT_JSON}")
 
-# --- Human-readable summary with economic intuition ---
-factor_intuition = {
-    'CPI': 'Inflation changes can affect purchasing power and stock valuations',
-    'Interest_Rate': 'Rate changes affect borrowing costs and company valuations',
-    'Oil': 'Changes in oil prices affect energy and industrial sectors',
-    'FX': 'Currency fluctuations influence export/import-heavy companies',
-    'VIX': 'Higher market volatility negatively impacts returns'
-}
-
+# -----------------------------
+# Human-readable summary with dynamic interpretations
+# -----------------------------
+# Identify top contributing factors (absolute average impact)
 factors = [c for c in contributions.columns if c not in ['Date', 'Predicted_Return', 'const']]
 avg_contrib = contributions[factors].mean()
-
-# Sort by absolute impact
 top_factors = avg_contrib.abs().sort_values(ascending=False).head(3).index.tolist()
 
-summary_lines = ["### Multi-Factor Attribution Summary\n"]
+# Dynamic factor interpretations
+factor_interpretation = {
+    "VIX": "Higher market volatility negatively impacts index returns.",
+    "Gold": "Rising gold prices may indicate investor hedging or risk-off behavior, positively affecting returns.",
+    "FX": "Currency fluctuations influence export/import-heavy companies, affecting returns.",
+    "Oil": "Changes in oil prices affect energy-related sectors and inflation expectations.",
+    "CPI": "Higher inflation can impact market sentiment and returns.",
+    "Interest_Rate": "Rising rates may increase discounting of future cash flows, affecting index returns."
+}
+
+# Generate summary
+summary_lines = []
+summary_lines.append("### Multi-Factor Attribution Summary\n")
 
 for factor in top_factors:
     direction = "positive" if avg_contrib[factor] > 0 else "negative"
     magnitude = avg_contrib[factor]
-    intuition = factor_intuition.get(factor, "")
+    interpretation = factor_interpretation.get(
+        factor,
+        f"{factor} contributes to index returns based on market/sector dynamics."
+    )
     summary_lines.append(
         f"**{factor}** had a {direction} impact on index returns, "
-        f"with an average contribution of {magnitude:.5f} per day. {intuition}"
+        f"with an average contribution of {magnitude:.5f} per day. {interpretation}"
     )
 
-# Optional: overall explained return
+# Overall explained return
 total_explained = contributions[factors].sum(axis=1).mean()
 summary_lines.append(f"\nOverall, the model explains an average of {total_explained:.5f} of daily index returns.")
 
 # Save summary report
-with open("outputs/summary_report.txt", "w") as f:
+with open(OUTPUT_SUMMARY, "w") as f:
     f.write("\n".join(summary_lines))
 
 # Print summary to console

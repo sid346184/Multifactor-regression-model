@@ -6,14 +6,15 @@ import pandas as pd
 # -----------------------
 start_date = "2020-01-01"
 end_date = "2025-01-01"
-index_symbol = "^GSPC"  # S&P 500 (change to ^NSEI for NIFTY 50)
+index_symbol = "^GSPC"  # S&P 500 (or "^NSEI" for NIFTY 50)
 
-# Factor symbols
+# Factor symbols – update here
 factor_symbols = {
-    "Oil": "CL=F",          # Crude Oil
-    "FX": "EURUSD=X",       # USD/EUR exchange rate
-    "VIX": "^VIX"           # Volatility Index
+    "Gold": "GLD",  # safer alternative to GC=F
+    "FX": "EURUSD=X",
+    "VIX": "^VIX"
 }
+
 
 # -----------------------
 # Download index data
@@ -47,7 +48,7 @@ factor_data['CPI'] = 0.001 + 0.0001 * pd.Series(range(len(dates)), index=dates)
 factor_data['Interest_Rate'] = 0.002 + 0.00005 * pd.Series(range(len(dates)), index=dates)
 
 # Reorder columns
-factor_data = factor_data[['CPI', 'Interest_Rate', 'Oil', 'FX', 'VIX']]
+factor_data = factor_data[list(factor_symbols.keys())]
 
 # Drop rows with missing values
 factor_data = factor_data.dropna()
