@@ -102,6 +102,21 @@ Example:
 ]
 
 
+**Line Chart**
+![Line Chart](outputs/factor_contributions_line.png)
+
+**Area Chart**
+![Area Chart](outputs/factor_contributions_area_unstacked.png)
+
+**Average Contribution**
+![Bar Chart](outputs/factor_contributions_bar.png)
+
+**Heatmap**
+![Heatmap](outputs/factor_contributions_heatmap.png)
+
+
+
+
 ### Multi-Factor Attribution Summary
 
 CPI had a negative impact on index returns, with an average contribution of -0.00000277 per day. Inflation changes can affect purchasing power and stock valuations.
