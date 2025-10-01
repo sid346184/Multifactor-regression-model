@@ -105,8 +105,6 @@ Example:
 **Line Chart**
 ![Line Chart](outputs/factor_contributions_line.png)
 
-**Area Chart**
-![Area Chart](outputs/factor_contributions_area_unstacked.png)
 
 **Average Contribution**
 ![Bar Chart](outputs/factor_contributions_bar.png)
