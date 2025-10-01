@@ -3,20 +3,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
-# Read JSON
 df = pd.read_json("outputs/factor_contributions.json")
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
-# Dynamically get factor columns (exclude 'const' and 'Predicted_Return')
 exclude_cols = ['const', 'Predicted_Return']
 factors = [c for c in df.columns if c not in exclude_cols]
 
 os.makedirs("outputs", exist_ok=True)
 
-# -----------------------------
-# 1. Line Chart (daily contributions)
-# -----------------------------
+
 plt.figure(figsize=(12,6))
 for factor in factors:
     plt.plot(df.index, df[factor], label=factor, alpha=0.7)
@@ -29,21 +25,7 @@ plt.tight_layout()
 plt.savefig("outputs/factor_contributions_line.png")
 plt.close()
 
-# -----------------------------
-# 2. Unstacked Area Chart
-# -----------------------------
-plt.figure(figsize=(12,6))
-df[factors].plot.area(alpha=0.6, figsize=(12,6), stacked=False)
-plt.title("Daily Factor Contributions - Area Chart (Unstacked)")
-plt.ylabel("Contribution")
-plt.xlabel("Date")
-plt.tight_layout()
-plt.savefig("outputs/factor_contributions_area_unstacked.png")
-plt.close()
 
-# -----------------------------
-# 3. Bar Chart of Average Contributions
-# -----------------------------
 avg_contrib = df[factors].mean()
 plt.figure(figsize=(10,6))
 sns.barplot(x=avg_contrib.index, y=avg_contrib.values, palette="viridis")
@@ -55,9 +37,6 @@ plt.tight_layout()
 plt.savefig("outputs/factor_contributions_bar.png")
 plt.close()
 
-# -----------------------------
-# 4. Optional: Heatmap of Contributions over Time
-# -----------------------------
 plt.figure(figsize=(12,6))
 sns.heatmap(df[factors].T, cmap="coolwarm", cbar_kws={'label': 'Contribution'})
 plt.title("Heatmap of Factor Contributions Over Time")
