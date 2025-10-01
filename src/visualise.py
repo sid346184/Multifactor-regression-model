@@ -8,14 +8,14 @@ df = pd.read_json("outputs/factor_contributions.json")
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
-# Get factor columns dynamically (exclude 'const' and 'Predicted_Return' if present)
+# Dynamically get factor columns (exclude 'const' and 'Predicted_Return')
 exclude_cols = ['const', 'Predicted_Return']
 factors = [c for c in df.columns if c not in exclude_cols]
 
 os.makedirs("outputs", exist_ok=True)
 
 # -----------------------------
-# 1. Line Chart (per day contributions)
+# 1. Line Chart (daily contributions)
 # -----------------------------
 plt.figure(figsize=(12,6))
 for factor in factors:
@@ -30,7 +30,7 @@ plt.savefig("outputs/factor_contributions_line.png")
 plt.close()
 
 # -----------------------------
-# 2. Stacked Area Chart
+# 2. Unstacked Area Chart
 # -----------------------------
 plt.figure(figsize=(12,6))
 df[factors].plot.area(alpha=0.6, figsize=(12,6), stacked=False)
@@ -40,7 +40,6 @@ plt.xlabel("Date")
 plt.tight_layout()
 plt.savefig("outputs/factor_contributions_area_unstacked.png")
 plt.close()
-
 
 # -----------------------------
 # 3. Bar Chart of Average Contributions
@@ -54,6 +53,18 @@ plt.xlabel("Factors")
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.savefig("outputs/factor_contributions_bar.png")
+plt.close()
+
+# -----------------------------
+# 4. Optional: Heatmap of Contributions over Time
+# -----------------------------
+plt.figure(figsize=(12,6))
+sns.heatmap(df[factors].T, cmap="coolwarm", cbar_kws={'label': 'Contribution'})
+plt.title("Heatmap of Factor Contributions Over Time")
+plt.ylabel("Factors")
+plt.xlabel("Date Index")
+plt.tight_layout()
+plt.savefig("outputs/factor_contributions_heatmap.png")
 plt.close()
 
 print("All visualizations saved in outputs/ folder!")

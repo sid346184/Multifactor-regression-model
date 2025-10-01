@@ -1,61 +1,58 @@
 import pandas as pd
 import statsmodels.api as sm
 import numpy as np
-import os
-
-# -----------------------------
-# CONFIG
-# -----------------------------
-DATA_PATH = "data/aligned_data.csv"
-OUTPUT_JSON = "outputs/factor_contributions.json"
-OUTPUT_COEFF = "outputs/regression_coefficients.csv"
-OUTPUT_SUMMARY = "outputs/summary_report.txt"
+from sklearn.linear_model import Ridge, Lasso
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
 
 # -----------------------------
 # Load aligned data
 # -----------------------------
-data = pd.read_csv(DATA_PATH, parse_dates=['Date'], index_col='Date')
+data = pd.read_csv("data/aligned_data.csv", parse_dates=['Date'], index_col='Date')
 
-# -----------------------------
-# Regression setup
-# -----------------------------
 X = data.drop(columns=['Returns'])
 y = data['Returns']
-X = sm.add_constant(X)
-
-# Fit OLS model
-model = sm.OLS(y, X).fit()
-print(model.summary())
 
 # -----------------------------
-# Save regression coefficients
+# OLS Regression (existing)
 # -----------------------------
-coefficients = model.params
-coefficients.to_csv(OUTPUT_COEFF)
+X_sm = sm.add_constant(X)
+ols_model = sm.OLS(y, X_sm).fit()
+print("----- OLS Summary -----")
+print(ols_model.summary())
 
 # -----------------------------
-# Compute contributions per day
+# Ridge & Lasso (new)
 # -----------------------------
-contributions = X.multiply(coefficients, axis=1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+ridge_model = Ridge(alpha=0.01).fit(X_train, y_train)
+lasso_model = Lasso(alpha=0.001).fit(X_train, y_train)
+
+# R^2 on test set
+ridge_r2 = r2_score(y_test, ridge_model.predict(X_test))
+lasso_r2 = r2_score(y_test, lasso_model.predict(X_test))
+
+print(f"\nRidge R^2 on test set: {ridge_r2:.4f}")
+print(f"Lasso R^2 on test set: {lasso_r2:.4f}")
+
+# -----------------------------
+# Factor contributions (using OLS for interpretability)
+# -----------------------------
+coefficients = ols_model.params
+coefficients.to_csv("outputs/regression_coefficients.csv")
+
+contributions = X_sm.multiply(coefficients, axis=1)
 contributions['Predicted_Return'] = contributions.sum(axis=1)
+contributions.reset_index(inplace=True)  # include Date
 
-# Reset index to include Date column
-contributions.reset_index(inplace=True)
-
-# Save machine-readable JSON
-os.makedirs("outputs", exist_ok=True)
-contributions.to_json(OUTPUT_JSON, orient='records', date_format='iso')
-print(f"Factor contributions saved to {OUTPUT_JSON}")
+# Save JSON
+contributions.to_json("outputs/factor_contributions.json", orient='records', date_format='iso')
+print("Factor contributions saved to outputs/factor_contributions.json")
 
 # -----------------------------
-# Human-readable summary with dynamic interpretations
+# Human-readable summary
 # -----------------------------
-# Identify top contributing factors (absolute average impact)
-factors = [c for c in contributions.columns if c not in ['Date', 'Predicted_Return', 'const']]
-avg_contrib = contributions[factors].mean()
-top_factors = avg_contrib.abs().sort_values(ascending=False).head(3).index.tolist()
-
-# Dynamic factor interpretations
 factor_interpretation = {
     "VIX": "Higher market volatility negatively impacts index returns.",
     "Gold": "Rising gold prices may indicate investor hedging or risk-off behavior, positively affecting returns.",
@@ -65,29 +62,29 @@ factor_interpretation = {
     "Interest_Rate": "Rising rates may increase discounting of future cash flows, affecting index returns."
 }
 
-# Generate summary
-summary_lines = []
-summary_lines.append("### Multi-Factor Attribution Summary\n")
+factors = [c for c in contributions.columns if c not in ['Date', 'Predicted_Return', 'const']]
+avg_contrib = contributions[factors].mean().sort_values(key=abs, ascending=False)
+top_factors = avg_contrib.head(3).index.tolist()
 
+summary_lines = ["### Multi-Factor Attribution Summary\n"]
 for factor in top_factors:
     direction = "positive" if avg_contrib[factor] > 0 else "negative"
     magnitude = avg_contrib[factor]
-    interpretation = factor_interpretation.get(
-        factor,
-        f"{factor} contributes to index returns based on market/sector dynamics."
-    )
+    interpretation = factor_interpretation.get(factor, f"{factor} contributes to index returns based on market/sector dynamics.")
     summary_lines.append(
         f"**{factor}** had a {direction} impact on index returns, "
         f"with an average contribution of {magnitude:.5f} per day. {interpretation}"
     )
 
-# Overall explained return
 total_explained = contributions[factors].sum(axis=1).mean()
 summary_lines.append(f"\nOverall, the model explains an average of {total_explained:.5f} of daily index returns.")
 
-# Save summary report
-with open(OUTPUT_SUMMARY, "w") as f:
+# Add Ridge/Lasso test R^2 info
+summary_lines.append(f"\nRidge R^2 on test set: {ridge_r2:.4f}")
+summary_lines.append(f"Lasso R^2 on test set: {lasso_r2:.4f}")
+
+# Save summary
+with open("outputs/summary_report.txt", "w") as f:
     f.write("\n".join(summary_lines))
 
-# Print summary to console
 print("\n".join(summary_lines))
